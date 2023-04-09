@@ -1,0 +1,46 @@
+node {
+	def mavenHome = tool name: 'maven3.9.1'
+	stage('1. CodeClone')
+	{
+		 git credentialsId: 'Jenkins_PrivRepo', url: 'https://github.com/3rd-i-Integrated-Solutions/maven-web-application'
+	}
+
+	stage('2. MavenBuild')
+	{
+		 sh "${mavenHome}/bin/mvn package"
+	}
+	stage('3. CodeQualityAnalysis')
+	{
+		 sh "${mavenHome}/bin/mvn sonar:sonar"
+	}
+	stage('4. UploadArtifacts') //upload to Nexus
+	{
+		 sh "${mavenHome}/bin/mvn deploy"
+	}
+	stage('5. Deploy2UAT') //deploying to Tomcat
+	{
+		 deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://100.26.171.145:8080/')], contextPath: null, war: 'target/*.war'  
+	}	
+    stage('6. ManualApproval')  
+	{
+		 sh "echo 'Application is ready for review' "
+		 timeout(time:5, unit:'HOURS')
+		 {
+		 	input message: 'Application is ready for deployment. Please review and approve.'
+		 }
+	}
+    stage('7. Deploy2Prod')  
+	{
+		 deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://100.26.171.145:8080/')], contextPath: null, war: 'target/*.war'  
+	}
+    stage('8. EmailNotification')  
+	{
+		 emailext body: '''Hello Team,
+
+							The build is done. Great work, everyone!
+
+							Regards
+						''', recipientProviders: [developers(), contributor()], subject: 'Build status - email notification (test)', to: 'otaji1@outlook.com'
+	}
+
+	}
