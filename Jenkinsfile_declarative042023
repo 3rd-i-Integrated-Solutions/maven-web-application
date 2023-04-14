@@ -1,0 +1,69 @@
+	//Declarative JenkinsFile
+	pipeline{
+		agent {					
+			label 'buildNode'
+		}  
+		tools {
+			maven 'maven3.9.1'
+		}
+		//options {}
+		//triggers {}
+		stages {
+			stage('1Clone'){
+				steps{
+					sh "echo 'cloning the latest application version'"
+					//sh "git clone https://github.com/3rd-i-Integrated-Solutions/maven-web-application"
+					git "https://github.com/3rd-i-Integrated-Solutions/maven-web-application"
+					sh "echo 'latest application version available for testing and build'"
+				}
+				
+			}
+			stage('2TestBuild'){
+				steps{
+					sh "echo 'running JUnit-test-cases'"
+					sh "echo 'testing must pass to create artifacts'"
+					sh "mvn clean package"
+				}
+			}
+			stage('3CodeQualityAnalysis'){
+				steps{
+					sh "echo setup SonarQube authentication"
+					sh "echo 'Performing CodeQualityAnalysis'"
+					sh "mvn sonar:sonar"
+				}
+			}
+			stage('4UploadArtifacts'){
+				steps{
+					sh "echo configure Nexus authentication"
+					//sh "mvn deploy"
+					sh "echo artifacts uploaded"
+				}
+			}
+			stage('5DeployApp'){
+				steps{
+					deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://54.237.111.245:8080/')], contextPath: null, war: 'target/*war'
+				}
+			}
+		
+		}
+		post {
+			always{
+				emailext body: '''Great job, Team!
+
+				3rd-i Solutions''', subject: 'Build success', to: 'otaji1@outlook.com'
+			}
+			success{
+				emailext body: '''Great job, Team!
+
+				3rd-i Solutions''', subject: 'Build success', to: 'otaji1@outlook.com'
+			}
+			failure{
+				emailext body: '''Please review this job!
+
+				3rd-i Solutions''', subject: 'Build failed', to: 'otaji1@outlook.com'
+			}
+
+		}
+
+
+	}
